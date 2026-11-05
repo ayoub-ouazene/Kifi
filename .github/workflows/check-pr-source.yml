@@ -1,0 +1,21 @@
+name: Enforce PR Source Branch
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, edited]
+
+jobs:
+  check-branches:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce source branch policy
+        run: |
+          # If the target (base) is 'prod' AND the source (head) is NOT 'dev'
+          if [ "${{ github.base_ref }}" == "prod" ] && [ "${{ github.head_ref }}" != "dev" ]; then
+            echo "❌ Error: Pull requests to 'prod' are only allowed from the 'dev' branch."
+            echo "Your PR is currently coming from '${{ github.head_ref }}'."
+            exit 1
+          fi
+          
+          # If the condition above is not met, it means the PR is valid
+          echo "✅ Branch check passed. The PR source is allowed."
