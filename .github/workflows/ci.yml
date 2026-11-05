@@ -1,0 +1,40 @@
+name: Continuous Integration
+
+on:
+  pull_request:
+    branches: [ main, dev ]
+  push:
+    branches: [ main, dev ]
+
+jobs:
+  quality-and-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff pytest pytest-cov pydocstyle
+
+      # 1. Enforce Style, OOP standards & Docstrings
+      - name: Lint and Check Docstrings (Ruff / pydocstyle)
+        run: |
+          # Checks formatting, unused imports, bad syntax, and PEP conventions
+          ruff check .
+          # Enforces docstring conventions (PEP 257) on all classes and functions
+          pydocstyle --convention=google .
+
+      # 2. Run Automated Unit Tests & Enforce Coverage
+      - name: Run Pytest with Coverage
+        run: |
+          # Runs all tests and fails if code coverage is below 80%
+          pytest --cov=. --cov-fail-under=80 tests/
