@@ -1,3 +1,5 @@
+"""Google OAuth 2.0 authorization-code client."""
+
 from urllib.parse import urlencode
 
 import httpx
@@ -7,18 +9,44 @@ from .schemas import OAuthUserProfile
 
 
 class GoogleOAuth:
-    """Framework-agnostic Google OAuth 2.0 client."""
+    """Framework-agnostic Google OAuth 2.0 client.
+
+    Args:
+        client_id: OAuth client ID issued by Google.
+        client_secret: OAuth client secret issued by Google.
+        redirect_uri: Callback URI registered for the Google application.
+
+    Attributes:
+        authorization_url: Google authorization endpoint.
+        token_url: Google authorization-code token endpoint.
+        userinfo_url: Google OpenID Connect userinfo endpoint.
+    """
 
     authorization_url = "https://accounts.google.com/o/oauth2/v2/auth"
     token_url = "https://oauth2.googleapis.com/token"
     userinfo_url = "https://openidconnect.googleapis.com/v1/userinfo"
 
     def __init__(self, client_id: str, client_secret: str, redirect_uri: str) -> None:
+        """Initialize a Google OAuth client.
+
+        Args:
+            client_id: OAuth client ID issued by Google.
+            client_secret: OAuth client secret issued by Google.
+            redirect_uri: Registered callback URI.
+        """
         self.client_id = client_id
         self.client_secret = client_secret
         self.redirect_uri = redirect_uri
 
     def get_login_url(self, state: str) -> str:
+        """Build the Google authorization URL.
+
+        Args:
+            state: Application-generated CSRF state value.
+
+        Returns:
+            URL-encoded Google authorization endpoint URL.
+        """
         params = {
             "client_id": self.client_id,
             "redirect_uri": self.redirect_uri,
@@ -31,6 +59,18 @@ class GoogleOAuth:
         return f"{self.authorization_url}?{urlencode(params)}"
 
     async def get_user_profile(self, code: str) -> OAuthUserProfile:
+        """Exchange a Google authorization code and fetch the user profile.
+
+        Args:
+            code: Single-use authorization code from the callback request.
+
+        Returns:
+            Normalized profile containing Google ``sub``, email, name, and picture.
+
+        Raises:
+            TokenExchangeError: If token exchange, profile retrieval, or the
+                provider response is unsuccessful.
+        """
         async with httpx.AsyncClient() as client:
             token_response = await client.post(
                 self.token_url,
