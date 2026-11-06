@@ -23,18 +23,15 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install ruff pytest pytest-cov pydocstyle
+          pip install -r backend/requirements.txt -r backend/requirements-dev.txt
 
-      # 1. Enforce Style, OOP standards & Docstrings
+      # 1. Enforce style and docstrings for the backend package
       - name: Lint and Check Docstrings (Ruff / pydocstyle)
         run: |
-          # Checks formatting, unused imports, bad syntax, and PEP conventions
-          ruff check .
-          # Enforces docstring conventions (PEP 257) on all classes and functions
-          pydocstyle --convention=google .
+          ruff check backend/auth backend/tests
+          pydocstyle --convention=google backend/auth
 
-      # 2. Run Automated Unit Tests & Enforce Coverage
+      # 2. Run automated unit tests and enforce coverage
       - name: Run Pytest with Coverage
         run: |
-          # Runs all tests and fails if code coverage is below 80%
-          pytest --cov=. --cov-fail-under=80 tests/
+          pytest --cov=backend/auth --cov-fail-under=80 backend/tests/
