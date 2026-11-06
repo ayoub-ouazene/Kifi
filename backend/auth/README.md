@@ -13,6 +13,118 @@ The package provides:
 
 The clients currently use state protection. PKCE should also be added by the routing layer when the application requires PKCE: generate a verifier/challenge pair, persist the verifier alongside the state, include the challenge in the authorization request, and send the verifier during token exchange. The current provider client interfaces do not accept PKCE parameters, so PKCE support requires extending those interfaces before enabling it in production.
 
+## Team responsibilities
+
+This package is shared infrastructure. It provides OAuth provider communication and profile normalization, but it does not implement routes, sessions, JWTs, database persistence, or account-linking policies.
+
+### Backend engineer responsibilities
+
+The backend engineer owns the application-facing OAuth flow.
+
+The backend engineer must:
+
+1. Configure the Google and Meta credentials from environment variables.
+2. Instantiate `GoogleOAuth` and `MetaOAuth`.
+3. Implement these routes:
+   - `GET /auth/google/login`
+   - `GET /auth/google/callback`
+   - `GET /auth/meta/login`
+   - `GET /auth/meta/callback`
+4. Generate a CSRF state value with `generate_state()`.
+5. Store the state securely in an HTTP-only, short-lived cookie or server-side session.
+6. Verify the callback state with `verify_state()` before exchanging the authorization code.
+7. Reject missing state values, state mismatches, missing authorization codes, provider errors, and unsupported providers.
+8. Call `await client.get_user_profile(code)` only after state validation.
+9. Pass the returned `OAuthUserProfile` to the database/account service.
+10. Create the application session or JWT after the database service returns the internal user ID.
+11. Redirect the user to an allow-listed frontend URL.
+12. Convert internal OAuth exceptions into safe API responses without exposing client secrets, authorization codes, or provider tokens.
+
+The backend engineer must not:
+
+- Add database queries directly to `backend/auth/`.
+- Store provider client secrets in source code.
+- Trust an OAuth callback before verifying state.
+- Treat the provider email as the external identity key.
+- Put access tokens or client secrets in redirect URLs.
+- Modify provider profile IDs.
+- Store raw provider access tokens in application logs.
+
+The backend engineer owns route behavior, browser security, error handling, sessions/JWTs, and calling the database service.
+
+### Database engineer responsibilities
+
+The database engineer owns internal user persistence and OAuth account linking.
+
+The database engineer must:
+
+1. Create the `users` table for application-level identities.
+2. Create the `oauth_accounts` table for provider identities.
+3. Enforce uniqueness on `(provider, provider_user_id)`.
+4. Maintain the foreign-key relationship `oauth_accounts.user_id -> users.id`.
+5. Implement the account-linking upsert transaction.
+6. Return the internal `users.id` to the backend service.
+7. Handle existing OAuth account lookup, existing-user lookup by verified email, new-user creation, new OAuth-account creation, Meta profiles without email, and concurrent insert conflicts.
+8. Decide whether email values are globally unique.
+9. Normalize email values consistently for matching.
+10. Define the policy for updating names, email addresses, and avatar URLs.
+11. Prevent duplicate accounts for the same provider identity.
+
+The database engineer must not:
+
+- Use email as the primary OAuth identity key.
+- Create a separate user for every provider login when the account can be linked safely.
+- Link accounts by email without considering email verification and account-takeover risk.
+- Store authorization codes or client secrets.
+- Store raw provider access tokens in ordinary user tables.
+- Allow duplicate `(provider, provider_user_id)` values.
+
+The database engineer owns schema design, transactions, constraints, account linking, and returning the internal user identity.
+
+### Shared integration contract
+
+The backend and database engineers exchange exactly one normalized object:
+
+```python
+OAuthUserProfile(
+    provider="google" | "meta",
+    provider_user_id=str,
+    email=str | None,
+    name=str | None,
+    avatar_url=str | None,
+)
+```
+
+The integration sequence is:
+
+1. The backend route receives the OAuth callback.
+2. The backend validates the OAuth state.
+3. The backend calls the provider client.
+4. The provider client returns `OAuthUserProfile`.
+5. The backend sends the profile to the database/account service.
+6. The database service returns the internal application user ID.
+7. The backend creates the application session or JWT.
+8. The backend redirects the user to the application.
+
+Neither engineer should bypass this contract:
+
+- The provider client must not access the database.
+- The database service must not call Google or Meta.
+- The route must not implement SQL account-linking logic directly.
+
+| Area | Backend engineer | Database engineer |
+|---|---|---|
+| OAuth login/callback routes | Owns | Not responsible |
+| CSRF state cookie/session | Owns | Not responsible |
+| Google/Meta client invocation | Owns | Not responsible |
+| `OAuthUserProfile` contract | Consumes | Receives |
+| `users` table | Consumes | Owns |
+| `oauth_accounts` table | Consumes | Owns |
+| Account linking/upsert | Calls service | Owns |
+| JWT/application session | Owns | Not responsible |
+| Provider secrets | Configures securely | Does not store in DB |
+| OAuth tokens | Does not expose | Does not store in ordinary tables |
+
 ## For the Backend Engineer: routing integration
 
 The following example uses FastAPI terminology only to demonstrate integration. This package does not initialize FastAPI or depend on it.
