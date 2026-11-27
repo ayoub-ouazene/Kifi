@@ -41,8 +41,6 @@ def _should_drop_content(content: str) -> bool:
         "Vous avez envoyÃ© une piÃ¨ce jointe.",
         "Vous avez envoyé une pièce jointe.",
         "Audio call ended",
-        "00799999004417259635",
-        "nonoletop2.2",
         "You missed a video chat",
         "Liked a message",
     ]:
