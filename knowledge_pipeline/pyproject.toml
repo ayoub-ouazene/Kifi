@@ -1,0 +1,19 @@
+[project]
+name = "kifi-knwolegde-pipeline"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "ghmoncif", email = "moncif.ghembaza@ensia.edu.dz" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "zenml>=0.99.0",
+]
+
+[project.scripts]
+kifi-knwolegde-pipeline = "kifi_knwolegde_pipeline:main"
+
+[build-system]
+requires = ["uv_build>=0.13.10,<0.14.0"]
+build-backend = "uv_build"
