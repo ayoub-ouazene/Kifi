@@ -1,6 +1,7 @@
 import httpx
 import pytest
 import respx
+
 from auth.exceptions import TokenExchangeError
 from auth.meta import MetaOAuth
 

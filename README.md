@@ -13,11 +13,10 @@ The package is located in [backend/auth](backend/auth) and does not initialize a
 
 ### Setup
 
-Use Python 3.11 or newer, then install runtime and development dependencies:
+Use Python 3.11 or newer and [uv](https://docs.astral.sh/uv/), then sync runtime and development dependencies:
 
 ```powershell
-python -m pip install -r backend/requirements.txt
-python -m pip install -r backend/requirements-dev.txt
+uv sync --project backend
 ```
 
 Copy the environment template and fill in provider credentials when integrating with routes:
@@ -53,7 +52,7 @@ if verify_state(saved_state, incoming_state):
 From the repository root:
 
 ```powershell
-python -m pytest -q backend/tests
+uv run --project backend pytest -q backend/tests
 ```
 
 The tests mock provider HTTP requests with `respx`; they do not contact Google or Meta.

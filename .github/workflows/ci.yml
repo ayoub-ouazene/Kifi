@@ -14,24 +14,26 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.11"
-          cache: "pip"
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.11
 
       - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt -r backend/requirements-dev.txt
+        working-directory: backend
+        run: uv sync --frozen --python 3.11
 
       # 1. Enforce style and docstrings for the backend package
       - name: Lint and Check Docstrings (Ruff / pydocstyle)
+        working-directory: backend
         run: |
-          ruff check backend/auth backend/tests
-          pydocstyle --convention=google backend/auth
+          uv run ruff check auth tests
+          uv run pydocstyle --convention=google auth
 
       # 2. Run automated unit tests and enforce coverage
       - name: Run Pytest with Coverage
-        run: |
-          pytest --cov=backend/auth --cov-fail-under=80 backend/tests/
+        working-directory: backend
+        run: uv run pytest --cov=auth --cov-fail-under=80 tests/
